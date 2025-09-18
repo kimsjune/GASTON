@@ -148,7 +148,8 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
                        colors=None, linear_fit=True, lw=2, domain_list=None, ticksize=20, figsize=(7,3),
                       offset=10**6, xticks=None, yticks=None, alpha=1, domain_boundary_plotting=False, 
                       save=False, save_dir="./", variable_spot_size=False, show_lgd=False,
-                      lgd_bbox=(1.05,1), extract_values = False):
+                      lgd_bbox=(1.05,1), extract_values = False,
+                      xlab=None, ylab=None, title=None):
     
     gene_labels_idx=binning_output['gene_labels_idx']
     if gene_name in gene_labels_idx:
@@ -243,6 +244,19 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
         plt.yticks(fontsize=ticksize)
     else:
         plt.yticks(yticks,fontsize=ticksize)
+    # Adding options for labels
+    if title is None:
+        plt.title("")
+    else: 
+        plt.title(title, fontsize = 14, pad = 10)
+    if xlab is None:
+        plt.xlabel("")
+    else:
+        plt.xlabel(xlab, fontsize = 14, pad = 10)
+    if ylab is None:
+        plt.ylabel("")
+    else: 
+        plt.ylabel(ylab, fontsize = 14, pad = 10)
         
     if domain_boundary_plotting and len(domain_list)>1:
         binned_labels=binning_output['binned_labels']
@@ -256,7 +270,7 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
                 right_bps.append(unique_binned_isodepths[i+1])
         
         for i in domain_list[:-1]:
-            plt.axvline((left_bps[i]+right_bps[i])*0.5, color='black', ls='--', linewidth=1.5, alpha=0.2)
+            plt.axvline((left_bps[i]+right_bps[i])*0.5, color='black', ls='--', linewidth=2, alpha=0.5) # thicker and darker
 
     sns.despine()
     if show_lgd:
