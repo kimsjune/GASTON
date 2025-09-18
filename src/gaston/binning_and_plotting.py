@@ -236,27 +236,28 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
                 plt.plot(unique_binned_isodepths[pts_seg], np.log(offset) + intercept + slope*unique_binned_isodepths[pts_seg], color='grey', alpha=1, lw=lw )
 
     if xticks is None:
-        plt.xticks(fontsize=ticksize)
+        plt.xticks(fontsize=ticksize, fontfamily='Arial')
     else:
-        plt.xticks(xticks,fontsize=ticksize)
+        plt.xticks(xticks,fontsize=ticksize, fontfamily='Arial')
         
     if yticks is None:
-        plt.yticks(fontsize=ticksize)
+        plt.yticks(fontsize=ticksize, fontfamily='Arial')
     else:
-        plt.yticks(yticks,fontsize=ticksize)
+        plt.yticks(yticks,fontsize=ticksize, fontfamily='Arial')
     # Adding options for labels
     if title is None:
         plt.title("")
     else: 
-        plt.title(title, fontsize = 14, pad = 10)
+        plt.title(title, fontsize = 14, fontfamily='Arial')
     if xlab is None:
         plt.xlabel("")
     else:
-        plt.xlabel(xlab, fontsize = 14, pad = 10)
+        plt.xlabel(xlab, fontsize = 14, fontfamily='Arial')
     if ylab is None:
         plt.ylabel("")
     else: 
-        plt.ylabel(ylab, fontsize = 14, pad = 10)
+        plt.ylabel(ylab, fontsize = 14, fontfamily='Arial')
+
         
     if domain_boundary_plotting and len(domain_list)>1:
         binned_labels=binning_output['binned_labels']
