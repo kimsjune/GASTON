@@ -227,9 +227,9 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
 
             if linear_fit:
                 if ct is None:
-                    slope_mat, intercept_mat, _, _ = pw_fit_dict['all_cell_types']
+                    slope_mat, intercept_mat, _, _, _= pw_fit_dict['all_cell_types']
                 else:
-                    slope_mat, intercept_mat, _, _ = pw_fit_dict[ct]
+                    slope_mat, intercept_mat, _, _, _ = pw_fit_dict[ct]
 
                 slope=slope_mat[gene,seg]
                 intercept=intercept_mat[gene,seg]
@@ -367,7 +367,7 @@ def plot_gene_function(gene_name, coords_mat, pw_fit_dict, gaston_labels, gaston
         umi_threshold=binning_output['umi_threshold']
         raise ValueError(f'gene does not have UMI count above threshold {umi_threshold}')
     
-    slope_mat, intercept_mat, _, _ = pw_fit_dict['all_cell_types']
+    slope_mat, intercept_mat, _, _, _= pw_fit_dict['all_cell_types']
     if gene_name in binning_output['gene_labels_idx']:
         gene=np.where(gene_labels_idx==gene_name)[0]
 
