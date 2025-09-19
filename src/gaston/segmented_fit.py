@@ -122,10 +122,10 @@ from sklearn.preprocessing import normalize
           
 #     return pw_fit_dict
 def pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth, cell_type_df, ct_list,
-                  umi_threshold=500, idx_kept=None, pc=0, pc_exposure=True, t=0.1,
+                  umi_threshold=500, idx_kept=None, t=0.1,
                   isodepth_mult_factor=1, reg=0, zero_fit_threshold=0):
 
-    counts_mat = counts_mat.T  # TODO: update code to use N x G matrix
+    counts_mat = counts_mat.T
     if idx_kept is None:
         idx_kept = np.where(np.sum(counts_mat,1) > umi_threshold)[0]
 
@@ -138,7 +138,7 @@ def pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth, cell_type_df, ct_l
     
     pw_fit_dict = {}
     
-    # ONE: compute for all cell types
+    # --- compute for all cell types ---
     print('Poisson regression for ALL cell types')
     s0_mat, i0_mat, s1_mat, i1_mat, pv_mat = segmented_poisson_regression(
         cmat, exposures, gaston_labels, gaston_isodepth, L, reg=reg
@@ -147,7 +147,6 @@ def pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth, cell_type_df, ct_l
     slope_mat = np.zeros((len(idx_kept), L))
     intercept_mat = np.zeros((len(idx_kept), L))
     
-    # use s0 fit for genes with lots of zeros
     nonzero_per_domain = np.zeros((G,L))
     for l in range(L):
         cmat_l = cmat[:, gaston_labels==l]
@@ -161,80 +160,103 @@ def pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth, cell_type_df, ct_l
 
     slope_mat[inds0] = s0_mat[inds0]
     intercept_mat[inds0] = i0_mat[inds0]
-    
-    # <<< NEW: compute goodness-of-fit matrix (Pearson correlation between y and fitted lambda)
+
+    # --- compute goodness-of-fit for all genes/domains ---
     fit_score_mat = np.zeros((len(idx_kept), L))
     for l in range(L):
-        idx_spots = gaston_labels == l
+        idx_spots = np.where(gaston_labels == l)[0]
         for i in range(len(idx_kept)):
             y = cmat[i, idx_spots]
-            lam = exposures[idx_spots] * np.exp(slope_mat[i,l] * gaston_isodepth[idx_spots] + intercept_mat[i,l])
-            if np.all(lam == lam[0]):
-                fit_score_mat[i,l] = 0.0
-            else:
-                fit_score_mat[i,l] = np.corrcoef(y, lam)[0,1]
+            lam = exposures[idx_spots] * np.exp(slope_mat[i, l] * gaston_isodepth[idx_spots] + intercept_mat[i, l])
+            fit_score_mat[i, l] = poisson_deviance_explained(y, lam)
 
     discont_mat = get_discont_mat(slope_mat, intercept_mat, gaston_labels, gaston_isodepth, L)
     slope_mat = slope_mat * isodepth_mult_factor
 
-    # <<< NEW: store fit_score_mat in pw_fit_dict
+    # store everything including deviance-explained
     pw_fit_dict['all_cell_types'] = (slope_mat, intercept_mat, discont_mat, pv_mat, fit_score_mat)
     
-    # TWO: compute for each cell type in ct_list
-    if cell_type_df is None:
-        return pw_fit_dict
-    
-    cell_type_mat = cell_type_df.to_numpy()
-    cell_type_names = np.array(cell_type_df.columns)
-    for ct in ct_list:
-        print(f'Poisson regression for cell type: {ct}')
-        ct_ind = np.where(cell_type_names == ct)[0][0]
-        
-        ct_spots = np.where(cell_type_mat[:, ct_ind] > 0)[0]
-        ct_spot_proportions = cell_type_mat[ct_spots, ct_ind]
-        
-        cmat_ct = cmat[:, ct_spots] * np.tile(ct_spot_proportions, (G,1))
-        exposures_ct = exposures[ct_spots] * ct_spot_proportions
-        gaston_labels_ct = gaston_labels[ct_spots]
-        gaston_isodepth_ct = gaston_isodepth[ct_spots]
+    # --- compute for each cell type ---
+    if cell_type_df is not None:
+        cell_type_mat = cell_type_df.to_numpy()
+        cell_type_names = np.array(cell_type_df.columns)
+        for ct in ct_list:
+            print(f'Poisson regression for cell type: {ct}')
+            ct_ind = np.where(cell_type_names == ct)[0][0]
+            
+            ct_spots = np.where(cell_type_mat[:, ct_ind] > 0)[0]
+            ct_spot_proportions = cell_type_mat[ct_spots, ct_ind]
+            
+            cmat_ct = cmat[:, ct_spots] * np.tile(ct_spot_proportions, (G,1))
+            exposures_ct = exposures[ct_spots] * ct_spot_proportions
+            gaston_labels_ct = gaston_labels[ct_spots]
+            gaston_isodepth_ct = gaston_isodepth[ct_spots]
 
-        s0_ct, i0_ct, s1_ct, i1_ct, pv_mat_ct = segmented_poisson_regression(
-            cmat_ct, exposures_ct, gaston_labels_ct, gaston_isodepth_ct, L
-        )
+            s0_ct, i0_ct, s1_ct, i1_ct, pv_mat_ct = segmented_poisson_regression(
+                cmat_ct, exposures_ct, gaston_labels_ct, gaston_isodepth_ct, L
+            )
 
-        slope_mat_ct = np.zeros((len(idx_kept), L))
-        intercept_mat_ct = np.zeros((len(idx_kept), L))
-        fit_score_mat_ct = np.zeros((len(idx_kept), L))  # <<< NEW
+            slope_mat_ct = np.zeros((len(idx_kept), L))
+            intercept_mat_ct = np.zeros((len(idx_kept), L))
+            fit_score_mat_ct = np.zeros((len(idx_kept), L))
 
-        inds1_ct = (pv_mat_ct < t)
-        inds0_ct = (pv_mat_ct >= t)
+            inds1_ct = (pv_mat_ct < t)
+            inds0_ct = (pv_mat_ct >= t)
 
-        slope_mat_ct[inds1_ct] = s1_ct[inds1_ct]
-        intercept_mat_ct[inds1_ct] = i1_ct[inds1_ct]
+            slope_mat_ct[inds1_ct] = s1_ct[inds1_ct]
+            intercept_mat_ct[inds1_ct] = i1_ct[inds1_ct]
 
-        slope_mat_ct[inds0_ct] = s0_ct[inds0_ct]
-        intercept_mat_ct[inds0_ct] = i0_ct[inds0_ct]
+            slope_mat_ct[inds0_ct] = s0_ct[inds0_ct]
+            intercept_mat_ct[inds0_ct] = i0_ct[inds0_ct]
 
-        # <<< NEW: compute fit_score for each gene/domain in this cell type
-        for l in range(L):
-            idx_spots = gaston_labels_ct == l
-            for i in range(len(idx_kept)):
-                y = cmat_ct[i, idx_spots]
-                lam = exposures_ct[idx_spots] * np.exp(slope_mat_ct[i,l] * gaston_isodepth_ct[idx_spots] + intercept_mat_ct[i,l])
-                if np.all(lam == lam[0]):
-                    fit_score_mat_ct[i,l] = 0.0
-                else:
-                    fit_score_mat_ct[i,l] = np.corrcoef(y, lam)[0,1]
+            for l in range(L):
+                idx_spots = np.where(gaston_labels_ct == l)[0]
+                for i in range(len(idx_kept)):
+                    y = cmat_ct[i, idx_spots]
+                    lam = exposures_ct[idx_spots] * np.exp(slope_mat_ct[i, l] * gaston_isodepth_ct[idx_spots] + intercept_mat_ct[i, l])
+                    fit_score_mat_ct[i, l] = poisson_deviance_explained(y, lam)
 
-        discont_mat = get_discont_mat(slope_mat_ct, intercept_mat_ct, gaston_labels_ct, gaston_isodepth_ct, L)
-        slope_mat_ct = slope_mat_ct * isodepth_mult_factor
+            discont_mat = get_discont_mat(slope_mat_ct, intercept_mat_ct, gaston_labels_ct, gaston_isodepth_ct, L)
+            slope_mat_ct = slope_mat_ct * isodepth_mult_factor
 
-        # <<< NEW: store fit_score_mat_ct in pw_fit_dict
-        pw_fit_dict[ct] = (slope_mat_ct, intercept_mat_ct, discont_mat, pv_mat_ct, fit_score_mat_ct)
+            pw_fit_dict[ct] = (slope_mat_ct, intercept_mat_ct, discont_mat, pv_mat_ct, fit_score_mat_ct)
           
     return pw_fit_dict
 
+
 ######################
+
+
+def poisson_deviance_explained(y, lam):
+    """
+    Compute deviance explained (pseudo-R²) for Poisson regression.
+    Returns a value between 0 and 1.
+    """
+    y = np.asarray(y, dtype=np.float64)
+    lam = np.asarray(lam, dtype=np.float64)
+    
+    mask = lam > 0
+    y_masked = y[mask]
+    lam_masked = lam[mask]
+    
+    if len(y_masked) == 0:
+        return 0.0
+    
+    # Null model: constant mean
+    lam0 = np.mean(y_masked) if np.mean(y_masked) > 0 else 1e-6
+    
+    with np.errstate(divide='ignore', invalid='ignore'):
+        dev_model = 2 * np.sum(np.where(y_masked > 0,
+                                        y_masked * np.log(y_masked / lam_masked) - (y_masked - lam_masked),
+                                        -lam_masked))
+        dev_null  = 2 * np.sum(np.where(y_masked > 0,
+                                        y_masked * np.log(y_masked / lam0) - (y_masked - lam0),
+                                        -lam0))
+    
+    r2 = 1 - dev_model / dev_null
+    return max(0.0, min(1.0, r2))
+
+################
 
 def llr_poisson(y, xcoords=None, exposure=None, alpha=0):
     s0, i0 = poisson_regression(y, xcoords=0*xcoords, exposure=exposure, alpha=alpha)
