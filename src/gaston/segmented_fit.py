@@ -28,44 +28,133 @@ from sklearn.preprocessing import normalize
 # slope_mat, intercept_mat: G' x L, entries are slopes/intercepts
 # discont_mat: G' x L-1, entries are discontinuity at domain boundaries
 # pv_mat: G' x L, entries are p-values from LLR test (slope=0 vs slope != 0)
+# def pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth, cell_type_df, ct_list,
+#                   umi_threshold=500, idx_kept=None, pc=0, pc_exposure=True, t=0.1,
+#                   isodepth_mult_factor=1, reg=0, zero_fit_threshold=0):
+
+#     counts_mat=counts_mat.T # TODO eventually: update code to use N x G matrix instead of G x N matrix...
+#     if idx_kept is None:
+#         idx_kept=np.where(np.sum(counts_mat,1) > umi_threshold)[0]
+
+#     exposures=np.sum(counts_mat,0)
+    
+#     cmat=counts_mat[idx_kept,:]
+    
+#     G,N=cmat.shape
+        
+#     gaston_isodepth=gaston_isodepth * isodepth_mult_factor
+#     L=len(np.unique(gaston_labels))
+    
+#     pw_fit_dict={}
+    
+#     # ONE: compute for all cell types
+#     print('Poisson regression for ALL cell types')
+#     s0_mat,i0_mat,s1_mat,i1_mat,pv_mat=segmented_poisson_regression(cmat,
+#                                                    exposures, 
+#                                                    gaston_labels, 
+#                                                    gaston_isodepth,
+#                                                    L, reg=reg)
+    
+#     slope_mat=np.zeros((len(idx_kept), L))
+#     intercept_mat=np.zeros((len(idx_kept), L))
+    
+#     # use s0 fit for genes with lots of zeros
+#     nonzero_per_domain = np.zeros((G,L))
+#     for l in range(L):
+#         cmat_l=cmat[:,gaston_labels==l]
+#         nonzero_per_domain[:,l]=np.count_nonzero(cmat_l,1)
+
+#     inds1= ((pv_mat < t) & (nonzero_per_domain >= zero_fit_threshold))
+#     inds0= ((pv_mat >= t) | (nonzero_per_domain < zero_fit_threshold))
+    
+#     slope_mat[inds1] = s1_mat[inds1]
+#     intercept_mat[inds1] = i1_mat[inds1]
+
+#     slope_mat[inds0] = s0_mat[inds0]
+#     intercept_mat[inds0] = i0_mat[inds0]
+    
+#     discont_mat=get_discont_mat(slope_mat, intercept_mat, gaston_labels, gaston_isodepth, L)
+
+#     slope_mat = slope_mat * isodepth_mult_factor
+
+#     pw_fit_dict['all_cell_types']=(slope_mat,intercept_mat,discont_mat, pv_mat)
+    
+#     # TWO: compute for each cell type in ct_list, if you have cell type info
+#     if cell_type_df is None:
+#         return pw_fit_dict
+    
+#     cell_type_mat=cell_type_df.to_numpy()
+#     cell_type_names=np.array(cell_type_df.columns)
+#     for ct in ct_list:
+#         print(f'Poisson regression for cell type: {ct}')
+#         ct_ind=np.where(cell_type_names==ct)[0][0]
+        
+#         ct_spots=np.where(cell_type_mat[:,ct_ind] > 0)[0]
+#         ct_spot_proportions=cell_type_mat[ct_spots,ct_ind]
+        
+#         cmat_ct=cmat[:,ct_spots] * np.tile(ct_spot_proportions,(G,1))
+#         exposures_ct=exposures[ct_spots] * ct_spot_proportions
+#         gaston_labels_ct=gaston_labels[ct_spots]
+#         gaston_isodepth_ct=gaston_isodepth[ct_spots]
+
+#         s0_ct,i0_ct,s1_ct,i1_ct,pv_mat_ct=segmented_poisson_regression(cmat_ct,
+#                                                        exposures_ct, 
+#                                                        gaston_labels_ct, 
+#                                                        gaston_isodepth_ct,
+#                                                        L)
+
+#         slope_mat_ct=np.zeros((len(idx_kept), L))
+#         intercept_mat_ct=np.zeros((len(idx_kept), L))
+
+#         inds1_ct= (pv_mat_ct < t)
+#         inds0_ct= (pv_mat_ct >= t)
+
+#         slope_mat_ct[inds1_ct] = s1_ct[inds1_ct]
+#         intercept_mat_ct[inds1_ct] = i1_ct[inds1_ct]
+
+#         slope_mat_ct[inds0_ct] = s0_ct[inds0_ct]
+#         intercept_mat_ct[inds0_ct] = i0_ct[inds0_ct]
+        
+#         discont_mat=get_discont_mat(slope_mat_ct, intercept_mat_ct, gaston_labels_ct, gaston_isodepth_ct, L)
+
+#         slope_mat_ct = slope_mat_ct * isodepth_mult_factor
+#         pw_fit_dict[ct]=(slope_mat_ct, intercept_mat_ct, discont_mat, pv_mat_ct)
+          
+#     return pw_fit_dict
 def pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth, cell_type_df, ct_list,
                   umi_threshold=500, idx_kept=None, pc=0, pc_exposure=True, t=0.1,
                   isodepth_mult_factor=1, reg=0, zero_fit_threshold=0):
 
-    counts_mat=counts_mat.T # TODO eventually: update code to use N x G matrix instead of G x N matrix...
+    counts_mat = counts_mat.T  # TODO: update code to use N x G matrix
     if idx_kept is None:
-        idx_kept=np.where(np.sum(counts_mat,1) > umi_threshold)[0]
+        idx_kept = np.where(np.sum(counts_mat,1) > umi_threshold)[0]
 
-    exposures=np.sum(counts_mat,0)
+    exposures = np.sum(counts_mat,0)
+    cmat = counts_mat[idx_kept,:]
     
-    cmat=counts_mat[idx_kept,:]
+    G, N = cmat.shape
+    gaston_isodepth = gaston_isodepth * isodepth_mult_factor
+    L = len(np.unique(gaston_labels))
     
-    G,N=cmat.shape
-        
-    gaston_isodepth=gaston_isodepth * isodepth_mult_factor
-    L=len(np.unique(gaston_labels))
-    
-    pw_fit_dict={}
+    pw_fit_dict = {}
     
     # ONE: compute for all cell types
     print('Poisson regression for ALL cell types')
-    s0_mat,i0_mat,s1_mat,i1_mat,pv_mat=segmented_poisson_regression(cmat,
-                                                   exposures, 
-                                                   gaston_labels, 
-                                                   gaston_isodepth,
-                                                   L, reg=reg)
+    s0_mat, i0_mat, s1_mat, i1_mat, pv_mat = segmented_poisson_regression(
+        cmat, exposures, gaston_labels, gaston_isodepth, L, reg=reg
+    )
     
-    slope_mat=np.zeros((len(idx_kept), L))
-    intercept_mat=np.zeros((len(idx_kept), L))
+    slope_mat = np.zeros((len(idx_kept), L))
+    intercept_mat = np.zeros((len(idx_kept), L))
     
     # use s0 fit for genes with lots of zeros
     nonzero_per_domain = np.zeros((G,L))
     for l in range(L):
-        cmat_l=cmat[:,gaston_labels==l]
-        nonzero_per_domain[:,l]=np.count_nonzero(cmat_l,1)
+        cmat_l = cmat[:, gaston_labels==l]
+        nonzero_per_domain[:, l] = np.count_nonzero(cmat_l, 1)
 
-    inds1= ((pv_mat < t) & (nonzero_per_domain >= zero_fit_threshold))
-    inds0= ((pv_mat >= t) | (nonzero_per_domain < zero_fit_threshold))
+    inds1 = ((pv_mat < t) & (nonzero_per_domain >= zero_fit_threshold))
+    inds0 = ((pv_mat >= t) | (nonzero_per_domain < zero_fit_threshold))
     
     slope_mat[inds1] = s1_mat[inds1]
     intercept_mat[inds1] = i1_mat[inds1]
@@ -73,52 +162,75 @@ def pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth, cell_type_df, ct_l
     slope_mat[inds0] = s0_mat[inds0]
     intercept_mat[inds0] = i0_mat[inds0]
     
-    discont_mat=get_discont_mat(slope_mat, intercept_mat, gaston_labels, gaston_isodepth, L)
+    # <<< NEW: compute goodness-of-fit matrix (Pearson correlation between y and fitted lambda)
+    fit_score_mat = np.zeros((len(idx_kept), L))
+    for l in range(L):
+        idx_spots = gaston_labels == l
+        for i in range(len(idx_kept)):
+            y = cmat[i, idx_spots]
+            lam = exposures[idx_spots] * np.exp(slope_mat[i,l] * gaston_isodepth[idx_spots] + intercept_mat[i,l])
+            if np.all(lam == lam[0]):
+                fit_score_mat[i,l] = 0.0
+            else:
+                fit_score_mat[i,l] = np.corrcoef(y, lam)[0,1]
 
+    discont_mat = get_discont_mat(slope_mat, intercept_mat, gaston_labels, gaston_isodepth, L)
     slope_mat = slope_mat * isodepth_mult_factor
 
-    pw_fit_dict['all_cell_types']=(slope_mat,intercept_mat,discont_mat, pv_mat)
+    # <<< NEW: store fit_score_mat in pw_fit_dict
+    pw_fit_dict['all_cell_types'] = (slope_mat, intercept_mat, discont_mat, pv_mat, fit_score_mat)
     
-    # TWO: compute for each cell type in ct_list, if you have cell type info
+    # TWO: compute for each cell type in ct_list
     if cell_type_df is None:
         return pw_fit_dict
     
-    cell_type_mat=cell_type_df.to_numpy()
-    cell_type_names=np.array(cell_type_df.columns)
+    cell_type_mat = cell_type_df.to_numpy()
+    cell_type_names = np.array(cell_type_df.columns)
     for ct in ct_list:
         print(f'Poisson regression for cell type: {ct}')
-        ct_ind=np.where(cell_type_names==ct)[0][0]
+        ct_ind = np.where(cell_type_names == ct)[0][0]
         
-        ct_spots=np.where(cell_type_mat[:,ct_ind] > 0)[0]
-        ct_spot_proportions=cell_type_mat[ct_spots,ct_ind]
+        ct_spots = np.where(cell_type_mat[:, ct_ind] > 0)[0]
+        ct_spot_proportions = cell_type_mat[ct_spots, ct_ind]
         
-        cmat_ct=cmat[:,ct_spots] * np.tile(ct_spot_proportions,(G,1))
-        exposures_ct=exposures[ct_spots] * ct_spot_proportions
-        gaston_labels_ct=gaston_labels[ct_spots]
-        gaston_isodepth_ct=gaston_isodepth[ct_spots]
+        cmat_ct = cmat[:, ct_spots] * np.tile(ct_spot_proportions, (G,1))
+        exposures_ct = exposures[ct_spots] * ct_spot_proportions
+        gaston_labels_ct = gaston_labels[ct_spots]
+        gaston_isodepth_ct = gaston_isodepth[ct_spots]
 
-        s0_ct,i0_ct,s1_ct,i1_ct,pv_mat_ct=segmented_poisson_regression(cmat_ct,
-                                                       exposures_ct, 
-                                                       gaston_labels_ct, 
-                                                       gaston_isodepth_ct,
-                                                       L)
+        s0_ct, i0_ct, s1_ct, i1_ct, pv_mat_ct = segmented_poisson_regression(
+            cmat_ct, exposures_ct, gaston_labels_ct, gaston_isodepth_ct, L
+        )
 
-        slope_mat_ct=np.zeros((len(idx_kept), L))
-        intercept_mat_ct=np.zeros((len(idx_kept), L))
+        slope_mat_ct = np.zeros((len(idx_kept), L))
+        intercept_mat_ct = np.zeros((len(idx_kept), L))
+        fit_score_mat_ct = np.zeros((len(idx_kept), L))  # <<< NEW
 
-        inds1_ct= (pv_mat_ct < t)
-        inds0_ct= (pv_mat_ct >= t)
+        inds1_ct = (pv_mat_ct < t)
+        inds0_ct = (pv_mat_ct >= t)
 
         slope_mat_ct[inds1_ct] = s1_ct[inds1_ct]
         intercept_mat_ct[inds1_ct] = i1_ct[inds1_ct]
 
         slope_mat_ct[inds0_ct] = s0_ct[inds0_ct]
         intercept_mat_ct[inds0_ct] = i0_ct[inds0_ct]
-        
-        discont_mat=get_discont_mat(slope_mat_ct, intercept_mat_ct, gaston_labels_ct, gaston_isodepth_ct, L)
 
+        # <<< NEW: compute fit_score for each gene/domain in this cell type
+        for l in range(L):
+            idx_spots = gaston_labels_ct == l
+            for i in range(len(idx_kept)):
+                y = cmat_ct[i, idx_spots]
+                lam = exposures_ct[idx_spots] * np.exp(slope_mat_ct[i,l] * gaston_isodepth_ct[idx_spots] + intercept_mat_ct[i,l])
+                if np.all(lam == lam[0]):
+                    fit_score_mat_ct[i,l] = 0.0
+                else:
+                    fit_score_mat_ct[i,l] = np.corrcoef(y, lam)[0,1]
+
+        discont_mat = get_discont_mat(slope_mat_ct, intercept_mat_ct, gaston_labels_ct, gaston_isodepth_ct, L)
         slope_mat_ct = slope_mat_ct * isodepth_mult_factor
-        pw_fit_dict[ct]=(slope_mat_ct, intercept_mat_ct, discont_mat, pv_mat_ct)
+
+        # <<< NEW: store fit_score_mat_ct in pw_fit_dict
+        pw_fit_dict[ct] = (slope_mat_ct, intercept_mat_ct, discont_mat, pv_mat_ct, fit_score_mat_ct)
           
     return pw_fit_dict
 
