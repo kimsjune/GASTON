@@ -148,7 +148,8 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
                        colors=None, linear_fit=True, lw=2, domain_list=None, ticksize=20, figsize=(7,3),
                       offset=10**6, xticks=None, yticks=None, alpha=1, domain_boundary_plotting=False, 
                       save=False, save_dir="./", variable_spot_size=False, show_lgd=False,
-                      lgd_bbox=(1.05,1), extract_values = False):
+                      lgd_bbox=(1.05,1), extract_values = False,
+                      xlab=None, ylab=None, title=None):
     
     gene_labels_idx=binning_output['gene_labels_idx']
     if gene_name in gene_labels_idx:
@@ -226,23 +227,37 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
 
             if linear_fit:
                 if ct is None:
-                    slope_mat, intercept_mat, _, _ = pw_fit_dict['all_cell_types']
+                    slope_mat, intercept_mat, _, _, _= pw_fit_dict['all_cell_types']
                 else:
-                    slope_mat, intercept_mat, _, _ = pw_fit_dict[ct]
+                    slope_mat, intercept_mat, _, _, _ = pw_fit_dict[ct]
 
                 slope=slope_mat[gene,seg]
                 intercept=intercept_mat[gene,seg]
                 plt.plot(unique_binned_isodepths[pts_seg], np.log(offset) + intercept + slope*unique_binned_isodepths[pts_seg], color='grey', alpha=1, lw=lw )
 
     if xticks is None:
-        plt.xticks(fontsize=ticksize)
+        plt.xticks(fontsize=ticksize, fontfamily='Arial')
     else:
-        plt.xticks(xticks,fontsize=ticksize)
+        plt.xticks(xticks,fontsize=ticksize, fontfamily='Arial')
         
     if yticks is None:
-        plt.yticks(fontsize=ticksize)
+        plt.yticks(fontsize=ticksize, fontfamily='Arial')
     else:
-        plt.yticks(yticks,fontsize=ticksize)
+        plt.yticks(yticks,fontsize=ticksize, fontfamily='Arial')
+    # Adding options for labels
+    if title is None:
+        plt.title("")
+    else: 
+        plt.title(title, fontsize = 14, fontfamily='Arial')
+    if xlab is None:
+        plt.xlabel("")
+    else:
+        plt.xlabel(xlab, fontsize = 14, fontfamily='Arial')
+    if ylab is None:
+        plt.ylabel("")
+    else: 
+        plt.ylabel(ylab, fontsize = 14, fontfamily='Arial')
+
         
     if domain_boundary_plotting and len(domain_list)>1:
         binned_labels=binning_output['binned_labels']
@@ -256,7 +271,7 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
                 right_bps.append(unique_binned_isodepths[i+1])
         
         for i in domain_list[:-1]:
-            plt.axvline((left_bps[i]+right_bps[i])*0.5, color='black', ls='--', linewidth=1.5, alpha=0.2)
+            plt.axvline((left_bps[i]+right_bps[i])*0.5, color='black', ls='--', linewidth=2, alpha=0.5) # thicker and darker
 
     sns.despine()
     if show_lgd:
@@ -352,7 +367,7 @@ def plot_gene_function(gene_name, coords_mat, pw_fit_dict, gaston_labels, gaston
         umi_threshold=binning_output['umi_threshold']
         raise ValueError(f'gene does not have UMI count above threshold {umi_threshold}')
     
-    slope_mat, intercept_mat, _, _ = pw_fit_dict['all_cell_types']
+    slope_mat, intercept_mat, _, _, _= pw_fit_dict['all_cell_types']
     if gene_name in binning_output['gene_labels_idx']:
         gene=np.where(gene_labels_idx==gene_name)[0]
 
