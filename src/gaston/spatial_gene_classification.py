@@ -137,6 +137,44 @@ def get_cont_genes(
 
     return cont_genes
 
+### Keep track of slopes to filter later
+def get_cont_genes_with_slopes(
+    pw_fit_dict,
+    binning_output,
+    q=0.95,
+    min_score=0.3,
+    abs_slope=None
+):
+    """
+    Select genes with strong slopes and good fit quality,
+    and store slope values instead of just domain indices.
+
+    Returns
+    -------
+    cont_genes : dict
+        Keys = gene names
+        Values = dict {domain_index: slope_value}
+    """
+
+    cont_genes = defaultdict(dict) # To initialize a nested dictionary
+    gene_labels_idx = binning_output['gene_labels_idx']
+
+    slope_mat_all, _, _, _, fit_score_mat = pw_fit_dict['all_cell_types']
+    slope_q = np.quantile(np.abs(slope_mat_all), q, 0)
+    L = len(slope_q)
+
+    for i, g in enumerate(gene_labels_idx):
+        for l in range(L):
+            slope_val = slope_mat_all[i, l]
+            if abs_slope is not None:
+                if np.abs(slope_val) > abs_slope and fit_score_mat[i, l] >= min_score:
+                    cont_genes[g][l] = slope_val
+            else:
+                if np.abs(slope_val) > slope_q[l] and fit_score_mat[i, l] >= min_score:
+                    cont_genes[g][l] = slope_val
+
+    return cont_genes
+
 ######################################################
 # Get Type I, II, III gene classification from colorectal tumor analysis (see manuscript)
 ######################################################
