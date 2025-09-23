@@ -18,10 +18,12 @@ from collections import defaultdict
 #                 #else:
 #                 discont_genes[g].append(l)
     
-#     # discont_genes=list( np.where(np.sum(np.abs(discont_mat) > discont_q,1))[0] )    
+#     discont_genes=list( np.where(np.sum(np.abs(discont_mat) > discont_q,1))[0] )    
 
 #     return discont_genes
 
+## Does not deal with the slope, rather the relative delta between two adjacent domains
+## This is a mutually exclusive feature with "continuousness", based on the slope
 def get_discont_genes(
     pw_fit_dict,
     binning_output,
@@ -39,19 +41,18 @@ def get_discont_genes(
 
     discont_genes = defaultdict(list)
     gene_labels_idx = binning_output['gene_labels_idx']
-
+    # Recall discont_mat is G x L-1 2D ndarray; Values represent the delta between two domains
     slope_mat_all, intercept_mat_all, discont_mat, _, fit_score_mat = pw_fit_dict['all_cell_types']
-
-    # Compute threshold for discontinuity (absolute value)
-    discont_q = np.quantile(np.abs(discont_mat), q, 0)
-    Lm1 = discont_mat.shape[1]  # L-1 boundaries
-
-    for i, g in enumerate(gene_labels_idx):
-        for l in range(Lm1):
-            # <<< NEW: require both discontinuity > quantile AND min goodness-of-fit in adjacent domains
-            if np.abs(discont_mat[i, l]) > discont_q[l] and \
-               fit_score_mat[i, l] >= min_score and fit_score_mat[i, l+1] >= min_score:
+    discont_q=np.quantile(np.abs(discont_mat), q,0) # 1 x L-1 array of quantile cutoff
+    K=len(discont_q)
+    for i,g in enumerate(gene_labels_idx):
+        for l in range(K):
+            if np.abs(discont_mat[i,l]) > discont_q[l]: # NOT checking for slope here. 
+                #if g not in discont_genes:
+                #    discont_genes[g]=[l]
+                #else:
                 discont_genes[g].append(l)
+    discont_genes=list( np.where(np.sum(np.abs(discont_mat) > discont_q,1))[0] )    
 
     return discont_genes
 
@@ -111,9 +112,9 @@ def get_cont_genes(
     # <<< NEW: unpack fit_score_mat from pw_fit_dict
     slope_mat_all, _, _, _, fit_score_mat = pw_fit_dict['all_cell_types']
 
-    slope_q = np.quantile(np.abs(slope_mat_all), q, 0)
+    slope_q = np.quantile(np.abs(slope_mat_all), q, 0) # 1 x L array (q-th quantile value of slope)
     L = len(slope_q)
-
+    # The row indices of gene_labels_idx is the same as slope_mat_all
     for i, g in enumerate(gene_labels_idx):
         for l in range(L):
             # <<< NEW: require both slope > quantile AND fit_score >= min_score

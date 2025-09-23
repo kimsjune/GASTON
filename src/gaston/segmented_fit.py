@@ -37,7 +37,7 @@ from sklearn.preprocessing import normalize
 #         idx_kept=np.where(np.sum(counts_mat,1) > umi_threshold)[0]
 
 #     exposures=np.sum(counts_mat,0)
-    
+
 #     cmat=counts_mat[idx_kept,:]
     
 #     G,N=cmat.shape
@@ -124,17 +124,20 @@ from sklearn.preprocessing import normalize
 def pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth, cell_type_df, ct_list,
                   umi_threshold=500, idx_kept=None, t=0.1,
                   isodepth_mult_factor=1, reg=0, zero_fit_threshold=0):
-
+    # Initially counts_mat is spots x genes. Now it's GENEs x SPOTs
     counts_mat = counts_mat.T
     if idx_kept is None:
+        # Across all spots get the total count for each GENE
+        # Keep the indices of GENEs that pass the cutoff
         idx_kept = np.where(np.sum(counts_mat,1) > umi_threshold)[0]
-
-    exposures = np.sum(counts_mat,0)
+    # Total read counts in each SPOT
+    exposures = np.sum(counts_mat,0) # 0 is column-wise
+    # Keep the genes passing cutoff
     cmat = counts_mat[idx_kept,:]
-    
-    G, N = cmat.shape
+    # G = number of GENEs; N = number of SPOTs
+    G, N = cmat.shape 
     gaston_isodepth = gaston_isodepth * isodepth_mult_factor
-    L = len(np.unique(gaston_labels))
+    L = len(np.unique(gaston_labels)) # Number of domains
     
     pw_fit_dict = {}
     
@@ -143,31 +146,36 @@ def pw_linear_fit(counts_mat, gaston_labels, gaston_isodepth, cell_type_df, ct_l
     s0_mat, i0_mat, s1_mat, i1_mat, pv_mat = segmented_poisson_regression(
         cmat, exposures, gaston_labels, gaston_isodepth, L, reg=reg
     )
-    
+    # idx_kept == G
     slope_mat = np.zeros((len(idx_kept), L))
     intercept_mat = np.zeros((len(idx_kept), L))
     
     nonzero_per_domain = np.zeros((G,L))
-    for l in range(L):
+    # Subset by domain
+    for l in range(L): 
         cmat_l = cmat[:, gaston_labels==l]
+        # for each ROW, count non zero items
         nonzero_per_domain[:, l] = np.count_nonzero(cmat_l, 1)
-
+    # These are True/False array of G X L shape
     inds1 = ((pv_mat < t) & (nonzero_per_domain >= zero_fit_threshold))
     inds0 = ((pv_mat >= t) | (nonzero_per_domain < zero_fit_threshold))
     
+    # The four lines consolidates all slopes and intercepts into slope_mat and intercept_mat, respectively
     slope_mat[inds1] = s1_mat[inds1]
     intercept_mat[inds1] = i1_mat[inds1]
-
+    # These matrices are all zeros
     slope_mat[inds0] = s0_mat[inds0]
     intercept_mat[inds0] = i0_mat[inds0]
 
     # --- compute goodness-of-fit for all genes/domains ---
     fit_score_mat = np.zeros((len(idx_kept), L))
     for l in range(L):
-        idx_spots = np.where(gaston_labels == l)[0]
-        for i in range(len(idx_kept)):
-            y = cmat[i, idx_spots]
-            lam = exposures[idx_spots] * np.exp(slope_mat[i, l] * gaston_isodepth[idx_spots] + intercept_mat[i, l])
+        pts_t = np.where(gaston_labels == l)[0]
+        ### range(len(pts_t)) IS A MISTAKE
+        ### Need to loop over each GENE 
+        for i in range(len(idx_kept)): 
+            y = cmat[i, pts_t]
+            lam = exposures[pts_t] * np.exp(slope_mat[i, l] * gaston_isodepth[pts_t] + intercept_mat[i, l])
             fit_score_mat[i, l] = poisson_deviance_explained(y, lam)
 
     discont_mat = get_discont_mat(slope_mat, intercept_mat, gaston_labels, gaston_isodepth, L)
@@ -278,6 +286,7 @@ def poisson_regression(y, xcoords=None, exposure=None, alpha=0):
 
     return [clf.coef_[0], clf.intercept_ ]
 
+# dp_labels == gaston_labels
 def segmented_poisson_regression(count, totalumi, dp_labels, isodepth, num_domains,
                                  opt_function=poisson_regression, reg=0):
     """ Fit Poisson regression per gene per domain.
@@ -294,10 +303,14 @@ def segmented_poisson_regression(count, totalumi, dp_labels, isodepth, num_domai
     """
 
     G, N = count.shape
-    unique_domains = np.sort(np.unique(dp_labels))
+    # Sorted list of domains
+    unique_domains = np.sort(np.unique(dp_labels)) 
     # L = len(unique_domains)
     L=num_domains
 
+    # Initialize some arrays 
+    # There are G (genes) rows with L (domains) items each
+    # G x L "table"
     slope1_matrix=np.zeros((G,L))
     intercept1_matrix=np.zeros((G,L))
     
@@ -306,14 +319,16 @@ def segmented_poisson_regression(count, totalumi, dp_labels, isodepth, num_domai
     intercept0_matrix=np.zeros((G,L))
     
     pval_matrix=np.zeros((G,L))
-
-    for g in trange(G):
-        for t in unique_domains:
-            pts_t=np.where(dp_labels==t)[0]
+    # trange() creates a progress bar
+    for g in trange(G): # for each GENE
+        for t in unique_domains: #for each DOMAIN
+            pts_t=np.where(dp_labels==t)[0] # find where gaston_label matches t; len(gaston_label) == N (SPOTs)
             t=int(t)
             
             # need to be enough points in domain
             if len(pts_t) > 10:
+                # Get slopes, intercepts, likelihoods?
+                # count == cmat (G x N)
                 s0, i0, s1, i1, pval = llr_poisson(count[g,pts_t], xcoords=isodepth[pts_t], exposure=totalumi[pts_t], alpha=reg)
             else:
                 s0=np.inf
@@ -321,7 +336,7 @@ def segmented_poisson_regression(count, totalumi, dp_labels, isodepth, num_domai
                 s1=np.inf
                 i1=np.inf
                 pval=np.inf
-        
+            # g is a given gene by its INDEX
             slope0_matrix[g,t]=s0
             intercept0_matrix[g,t]=i0
             
@@ -332,6 +347,7 @@ def segmented_poisson_regression(count, totalumi, dp_labels, isodepth, num_domai
             
     return slope0_matrix,intercept0_matrix,slope1_matrix,intercept1_matrix, pval_matrix
 
+# discont_mat = get_discont_mat(slope_mat, intercept_mat, gaston_labels, gaston_isodepth, L)
 def get_discont_mat(s_mat, i_mat, gaston_labels, gaston_isodepth, num_domains):
     G,_=s_mat.shape
     L=num_domains
@@ -347,7 +363,7 @@ def get_discont_mat(s_mat, i_mat, gaston_labels, gaston_isodepth, num_domains):
 
             x_right=np.min(gaston_isodepth[pts_l1])
             y_right=s_mat[:,l+1]*x_right + i_mat[:,l+1]
-            discont_mat[:,l]=y_right-y_left
+            discont_mat[:,l]=y_right-y_left # stores the delta between y axis values of adjacent domains (hence L-1 columns)
         else:
             discont_mat[:,l]=0
     return discont_mat
