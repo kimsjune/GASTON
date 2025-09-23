@@ -260,7 +260,7 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
         plt.ylabel(ylab, fontsize = 14, fontfamily='Arial')
     if ymin is not None:
         plt.ylim(bottom=ymin)
-    if ymax in not None:
+    if ymax is not None:
         plt.ylim(top=ymax)
 
         
