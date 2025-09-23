@@ -29,6 +29,7 @@ def get_discont_genes(
     binning_output,
     q=0.95,
     min_score=0.3  # <<< NEW: minimum goodness-of-fit threshold
+    abs_delta = None
 ):
     """
     Select genes with significant discontinuities between domains and good fit.
@@ -47,11 +48,18 @@ def get_discont_genes(
     K=len(discont_q)
     for i,g in enumerate(gene_labels_idx):
         for l in range(K):
-            if np.abs(discont_mat[i,l]) > discont_q[l]: # NOT checking for slope here. 
-                #if g not in discont_genes:
-                #    discont_genes[g]=[l]
-                #else:
-                discont_genes[g].append(l)
+            if abs_delta is not None:
+                if np.abs(discont_mat[i,l]) > abs_delta: # NOT checking for slope here. 
+                    #if g not in discont_genes:
+                    #    discont_genes[g]=[l]
+                    #else:
+                    discont_genes[g].append(l)
+            else:
+                if np.abs(discont_mat[i,l]) > discont_q[l]: # NOT checking for slope here. 
+                    #if g not in discont_genes:
+                    #    discont_genes[g]=[l]
+                    #else:
+                    discont_genes[g].append(l)
     discont_genes=list( np.where(np.sum(np.abs(discont_mat) > discont_q,1))[0] )    
 
     return discont_genes
@@ -96,6 +104,7 @@ def get_cont_genes(
     binning_output,
     q=0.95,
     min_score=0.3  # <<< NEW: minimum goodness-of-fit threshold
+    abs_slope = None
 ):
     """
     Select genes with strong slopes and good fit quality.
@@ -117,9 +126,14 @@ def get_cont_genes(
     # The row indices of gene_labels_idx is the same as slope_mat_all
     for i, g in enumerate(gene_labels_idx):
         for l in range(L):
+            # <<< NEW: require both slope > absolute cutoff AND fit_score >= min_score
+            if abs_slope is not None:
+                if np.abs(slope_mat_all[i, l]) > abs_slope and fit_score_mat[i, l] >= min_score:
+                    cont_genes[g].append(l)
             # <<< NEW: require both slope > quantile AND fit_score >= min_score
-            if np.abs(slope_mat_all[i, l]) > slope_q[l] and fit_score_mat[i, l] >= min_score:
-                cont_genes[g].append(l)
+            else:
+                if np.abs(slope_mat_all[i, l]) > slope_q[l] and fit_score_mat[i, l] >= min_score:
+                    cont_genes[g].append(l)
 
     return cont_genes
 

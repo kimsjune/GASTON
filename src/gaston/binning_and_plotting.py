@@ -149,7 +149,8 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
                       offset=10**6, xticks=None, yticks=None, alpha=1, domain_boundary_plotting=False, 
                       save=False, save_dir="./", variable_spot_size=False, show_lgd=False,
                       lgd_bbox=(1.05,1), extract_values = False,
-                      xlab=None, ylab=None, title=None):
+                      xlab=None, ylab=None, title=None,
+                      ylim=None):
     
     gene_labels_idx=binning_output['gene_labels_idx']
     if gene_name in gene_labels_idx:
@@ -257,6 +258,8 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
         plt.ylabel("")
     else: 
         plt.ylabel(ylab, fontsize = 14, fontfamily='Arial')
+    if ylim is not None:
+        plt.ylim(ylim)
 
         
     if domain_boundary_plotting and len(domain_list)>1:
