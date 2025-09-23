@@ -28,7 +28,7 @@ def get_discont_genes(
     pw_fit_dict,
     binning_output,
     q=0.95,
-    min_score=0.3  # <<< NEW: minimum goodness-of-fit threshold
+    min_score=0.3,  # <<< NEW: minimum goodness-of-fit threshold
     abs_delta = None
 ):
     """
@@ -103,7 +103,7 @@ def get_cont_genes(
     pw_fit_dict,
     binning_output,
     q=0.95,
-    min_score=0.3  # <<< NEW: minimum goodness-of-fit threshold
+    min_score=0.3,  # <<< NEW: minimum goodness-of-fit threshold
     abs_slope = None
 ):
     """
