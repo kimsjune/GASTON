@@ -359,8 +359,8 @@ def plot_gene_raw(gene_name, gene_labels, counts_mat, coords_mat, cbar_fs = 14,
     plt.axis('off')
 
 # plot piecewise linear gene function learned by GASTON
-def plot_gene_function(gene_name, coords_mat, pw_fit_dict, gaston_labels, gaston_isodepth, cbar_fs = 14,
-                       binning_output, offset=10**6, figsize=(6,6), colorbar=True, 
+def plot_gene_function(gene_name, coords_mat, pw_fit_dict, gaston_labels, gaston_isodepth, 
+                       binning_output, offset=10**6, figsize=(6,6), colorbar=True, cbar_fs = 14,
                        contours=False, contour_levels=4, contour_lw=1, contour_fs=10, s=16,
                       rotate=None,cmap='RdPu'):
 
