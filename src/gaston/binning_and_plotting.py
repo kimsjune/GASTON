@@ -330,7 +330,7 @@ def get_gene_plot_values(gene_name, binning_output, offset=10**6):
 
 # NxG counts matrix
 # plot raw expression values of gene
-def plot_gene_raw(gene_name, gene_labels, counts_mat, coords_mat, 
+def plot_gene_raw(gene_name, gene_labels, counts_mat, coords_mat, cbar_fs = 14
                        offset=10**6, figsize=(6,6), colorbar=True, vmax=None, vmin=None, s=16, rotate=None,
                        cmap='RdPu'):
 
@@ -352,7 +352,9 @@ def plot_gene_raw(gene_name, gene_labels, counts_mat, coords_mat,
 
     if colorbar:
         cbar=plt.colorbar(im1)
-        cbar.ax.tick_params(labelsize=10)
+        cbar.ax.tick_params(labelsize=cbar_fs)
+        for label in cbar.ax.get_yticklabels():
+            label.set_fontfamily("Arial")
 
     plt.axis('off')
 
@@ -396,6 +398,8 @@ def plot_gene_function(gene_name, coords_mat, pw_fit_dict, gaston_labels, gaston
         ax.clabel(CS, CS.levels, inline=True, fontsize=contour_fs)
     if colorbar:
         cbar=plt.colorbar(im1)
-        cbar.ax.tick_params(labelsize=10)
+        cbar.ax.tick_params(labelsize=cbar_fs)
+        for label in cbar.ax.get_yticklabels():
+            label.set_fontfamily("Arial")
 
     plt.axis('off')

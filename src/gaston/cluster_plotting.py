@@ -97,7 +97,12 @@ def plot_isodepth(gaston_isodepth, S, mod, figsize=(5,8), contours=True, contour
         ax.clabel(CS, CS.levels, inline=True, fontsize=contour_fs)
     if colorbar:
         cbar=plt.colorbar(im1)
+        # Add a title
+        cbar.set_label("Isodepth", fontsize=cbar_fs, fontfamily="Arial")
         cbar.ax.tick_params(labelsize=cbar_fs)
+        # Set fontfamily to arial
+        for label in cbar.ax.get_yticklabels():
+            label.set_fontfamily("Arial")
     if streamlines:
         x=torch.tensor(S,requires_grad=True).float()
         G=torch.autograd.grad(outputs=mod.spatial_embedding(x).flatten(),inputs=x, grad_outputs=torch.ones_like(x[:,0]))[0]
