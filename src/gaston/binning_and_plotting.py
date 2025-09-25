@@ -249,7 +249,7 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
     if title is None:
         plt.title("")
     else: 
-        plt.title(title, fontsize = 14, fontfamily='Arial' pad = pad)
+        plt.title(title, fontsize = 14, fontfamily='Arial', pad = pad)
     if xlab is None:
         plt.xlabel("")
     else:
