@@ -149,7 +149,7 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
                       offset=10**6, xticks=None, yticks=None, alpha=1, domain_boundary_plotting=False, 
                       save=False, save_dir="./", variable_spot_size=False, show_lgd=False,
                       lgd_bbox=(1.05,1), extract_values = False,
-                      xlab=None, ylab=None, title=None,
+                      xlab=None, ylab=None, title=None, pad = 5,
                       ymin=None, ymax=None):
     
     gene_labels_idx=binning_output['gene_labels_idx']
@@ -249,7 +249,7 @@ def plot_gene_pwlinear(gene_name, pw_fit_dict, gaston_labels, gaston_isodepth, b
     if title is None:
         plt.title("")
     else: 
-        plt.title(title, fontsize = 14, fontfamily='Arial')
+        plt.title(title, fontsize = 14, fontfamily='Arial' pad = pad)
     if xlab is None:
         plt.xlabel("")
     else:
@@ -361,7 +361,7 @@ def plot_gene_raw(gene_name, gene_labels, counts_mat, coords_mat, cbar_fs = 14,
 # plot piecewise linear gene function learned by GASTON
 def plot_gene_function(gene_name, coords_mat, pw_fit_dict, gaston_labels, gaston_isodepth, 
                        binning_output, offset=10**6, figsize=(6,6), colorbar=True, cbar_fs = 14,
-                       contours=False, contour_levels=4, contour_lw=1, contour_fs=10, s=16,
+                       contours=False, contour_levels=4, contour_lw=1, contour_fs=10, s=16, pad = 5, title = None, axis = None
                       rotate=None,cmap='RdPu'):
 
     if rotate is not None:
@@ -397,9 +397,12 @@ def plot_gene_function(gene_name, coords_mat, pw_fit_dict, gaston_labels, gaston
         CS=ax.tricontour(coords_mat[:,0], coords_mat[:,1], outputs, levels=contour_levels, linewidths=contour_lw, colors='k', linestyles='solid')
         ax.clabel(CS, CS.levels, inline=True, fontsize=contour_fs)
     if colorbar:
-        cbar=plt.colorbar(im1)
+        cbar=plt.colorbar(im1, pad = 0.01, fraction=0.08, aspect=30)
         cbar.ax.tick_params(labelsize=cbar_fs)
         for label in cbar.ax.get_yticklabels():
             label.set_fontfamily("Arial")
 
-    plt.axis('off')
+    if title is not None:
+        plt.title(title, fontsize = 14, fontfamily = "Arial", pad = pad)
+    if axis is not None:
+        plt.axis('on')
