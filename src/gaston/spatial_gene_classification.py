@@ -60,7 +60,8 @@ def get_discont_genes(
                     #    discont_genes[g]=[l]
                     #else:
                     discont_genes[g].append(l)
-    discont_genes=list( np.where(np.sum(np.abs(discont_mat) > discont_q,1))[0] )    
+    # Why is this line here?
+    #discont_genes=list( np.where(np.sum(np.abs(discont_mat) > discont_q,1))[0] )    
 
     return discont_genes
 
